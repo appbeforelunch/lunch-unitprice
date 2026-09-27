@@ -115,6 +115,8 @@
   var RE_N_PACK = /(\d+)\s*-?\s*(?:pack|packs|pk)\b/;
   // "24 Count" / "60 capsules"
   var RE_COUNT = new RegExp('(\\d+)\\s*(' + COUNT_ALT + ')(?![a-z])');
+  // The " 4 oz" tail of "1 lb 4 oz", anchored so it must directly follow.
+  var RE_CONTINUE = new RegExp('^[\\s,]*(?:and\\s+)?(' + NUM + ')\\s*(' + MEASURED_ALT + ')(?![a-z])');
 
   /* ------------------------------------------------------------ normalize - */
 
@@ -147,6 +149,33 @@
     return isFinite(n) && n > 0 ? n : null;
   }
 
+  /**
+   * "1 lb 11.5 oz" is one size, not two - reading only the pounds understates
+   * the package and overstates the unit price.
+   *
+   * Extends a measured match with any directly adjacent parts in the same family
+   * whose unit is strictly smaller, and returns the extra amount in base units.
+   * Two guards keep it honest: a bracket or any other character between the
+   * parts ("20 oz (1 lb 4 oz)") means the second reading is a restatement rather
+   * than a continuation, and a non-decreasing unit ("12 oz ... 24 oz") means the
+   * same amount stated twice. Both stop the walk.
+   */
+  function extendCompound(t, pos, family, lastFactor) {
+    var extra = 0;
+    for (;;) {
+      var m = RE_CONTINUE.exec(t.slice(pos));
+      if (!m) break;
+      var spec = UNITS[m[2]];
+      if (!spec || spec[0] !== family || spec[1] >= lastFactor) break;
+      var part = parseFloat(m[1]);
+      if (!isFinite(part) || part <= 0) break;
+      extra += part * spec[1];
+      lastFactor = spec[1];
+      pos += m[0].length;
+    }
+    return extra;
+  }
+
   /* ------------------------------------------------------------ parseSize - */
 
   /**
@@ -176,6 +205,8 @@
     var dims = RE_DIMENSIONS.exec(t);
     if (xm && dims && dims.index <= xm.index) xm = null; // "10 x 4 x 3 inches"
 
+    var unitEnd = -1;   // where the matched unit ends, for compound tails
+
     if (xm) {
       if (reversed) {
         qty = parseFloat(xm[1]);
@@ -185,6 +216,7 @@
         multiplier = parseInt(xm[1], 10);
         qty = parseFloat(xm[2]);
         unitKey = xm[3];
+        unitEnd = xm.index + xm[0].length;   // "12 x 1 lb 4 oz"
       }
     } else {
       // 2. First measured amount in the text ("Net Wt 12 oz (340 g)" -> 12 oz).
@@ -198,6 +230,7 @@
       if (mm) {
         qty = parseFloat(mm[1]);
         unitKey = mm[2];
+        unitEnd = mm.index + mm[0].length;
       }
 
       // 3. Pack multipliers.
@@ -214,7 +247,7 @@
           } else {
             qty = parseInt(cm[1], 10);
             unitKey = null;
-            return finish(qty, 1, 'count', 1);
+            return finish(qty, 1, 'count');
           }
         }
       }
@@ -222,19 +255,21 @@
 
     if (unitKey === null) {
       // No measured unit at all. A lone pack term is still a usable count.
-      if (multiplier > 1) return finish(multiplier, 1, 'count', 1);
+      if (multiplier > 1) return finish(multiplier, 1, 'count');
       return null;
     }
     if (!isFinite(qty) || qty <= 0) return null;
     if (!isFinite(multiplier) || multiplier <= 0) return null;
 
     var spec = UNITS[unitKey];
-    return finish(qty, multiplier, spec[0], spec[1]);
+    var baseQty = qty * spec[1];
+    if (unitEnd >= 0) baseQty += extendCompound(t, unitEnd, spec[0], spec[1]);
+    return finish(baseQty, multiplier, spec[0]);
   }
 
-  function finish(qty, multiplier, family, baseFactor) {
+  function finish(baseQty, multiplier, family) {
     var fam = FAMILIES[family];
-    var totalBase = qty * multiplier * baseFactor;
+    var totalBase = baseQty * multiplier;
     if (!isFinite(totalBase) || totalBase <= 0) return null;
     return {
       amount: totalBase / fam.step,

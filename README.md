@@ -51,6 +51,7 @@ actually compare on:
 | `1.5 lbs` / `2 lb` | `$0.20 / oz` |
 | `500g` / `2 x 1.36 kg` | `$2.00 / 100 g` |
 | `1 L` | `$0.30 / 100 ml` |
+| `1 lb 11.5 oz` | `$0.29 / oz` |
 | `Pack of 6` / `100 Count` | `$1.49 / ct` |
 
 Traps it handles deliberately:
@@ -67,9 +68,14 @@ Traps it handles deliberately:
   a count *is* the size.
 - **`1000mg`** — a per-serving dose, not a package size. Milligrams are never
   read as a package size, so a bottle of vitamins prices per `ct`.
+- **Compound weights** — `1 lb 11.5 oz` is *one* size (27.5 oz), not a pound
+  with a stray number after it. Also `1 Pound 4 Ounce`, `1 kg 500 g`,
+  `2 liters 500 ml`. Only a directly adjacent, same-family, strictly-smaller
+  unit is absorbed, so `3 oz 2 oz` and `1 lb, 4 Pack` are left alone.
 - **`10.5 x 4 x 3 inches`** — shipping dimensions, not a multiplier.
-- **`Net Wt 12 oz (340 g)`** — the primary unit wins; the parenthetical
-  conversion is ignored rather than double-counted.
+- **`NET WT 20 OZ (1 LB 4 OZ)`** — a bracketed restatement of the same weight.
+  The primary unit wins; the parenthetical is ignored rather than added on.
+  Same for `Net Wt 12 oz (340 g)`.
 
 **If the size cannot be read, no badge is shown.** A wrong unit price is worse
 than none, so every ambiguous case returns nothing.
@@ -99,6 +105,7 @@ src/content.js        DOM layer: find price + size, render badge, best value
 src/badge.css         badge styling
 fixtures/product.html realistic Amazon product page
 fixtures/search.html  realistic Amazon search page (10 results, incl. traps)
+fixtures/bug-pizza.html  frozen pizza results: compound lb+oz weights
 test.mjs              Playwright + pure-parser tests
 ```
 
@@ -112,16 +119,16 @@ npm install
 npm test          # HEADED=1 npm test to watch the browser
 ```
 
-40 assertions in two layers:
+61 assertions in two layers:
 
-1. **Parser** — 20 cases run straight against `src/parse.js` in Node, covering
+1. **Parser** — 36 cases run straight against `src/parse.js` in Node, covering
    every trap above.
 2. **End-to-end** — a real Chromium loads the unpacked extension, every request
    to `amazon.com` is fulfilled from the local fixtures (so the content script's
    URL match fires for real), and the rendered badges are asserted: 8 unit-price
-   cases on the search page, the multipack product page, the two
-   show-nothing cases, best-value placement, re-run idempotency, and zero
-   network requests.
+   cases on the search page, the multipack product page, the frozen-pizza page
+   (compound weights), the two show-nothing cases, best-value placement, re-run
+   idempotency, and zero network requests.
 
 ## Known limits
 

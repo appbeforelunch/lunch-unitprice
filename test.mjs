@@ -68,11 +68,34 @@ check('unreadable size yields nothing', unit('$29.99', 'Gourmet Nut Butter Gift 
 check('missing price yields nothing', unit('Currently unavailable', 'Sampler, 8 oz'), null);
 check('thousands separator in price', UP.parsePrice('$1,249.99'), 1249.99);
 
+// Compound imperial weights. Regression: reading only the pounds and dropping
+// the ounces understated every package and handed "best value" to the worst
+// deal on the frozen-pizza page.
+const base = (text) => { const r = UP.parseSize(text); return r ? r.totalBase : null; };
+check('1 lb 11.5 oz is 27.5 oz', base('Stone Oven Margherita Frozen Pizza, 1 lb 11.5 oz'), 27.5);
+check('1 lb 4.6 oz is 20.6 oz', base('Thin Crust Four Cheese Frozen Pizza, 1 lb 4.6 oz'), 20.6);
+check('1 lb 4 oz is 20 oz', base('Net Wt 1 lb 4 oz'), 20);
+check('spelled-out pound and ounce compound', base('1 Pound 4 Ounce'), 20);
+check('2 lb 3 oz is 35 oz', base('2 lb 3 oz'), 35);
+check('2 lb 6 oz is 38 oz', base('Chicken Breast, 2 lb 6 oz package'), 38);
+check('compound survives a trailing word', base('1 lb 8 oz bag'), 24);
+check('decimal pounds alone still work', base('Ground Beef, 1.25 lb'), 20);
+check('kg + g compound', base('1 kg 500 g'), 1500);
+check('litre + ml compound', base('2 liters 500 ml'), 2500);
+check('a pack term still multiplies a compound', base('1 lb 4 oz (Pack of 2)'), 40);
+check('N x compound multiplies the whole compound', base('12 x 1 lb 4 oz'), 240);
+// The two guards that keep the walk from over-reading.
+check('bracketed restatement is not a continuation', base('NET WT 20 OZ (1 LB 4 OZ) 567g'), 20);
+check('metric restatement still loses to the primary unit', base('Coffee, Net Wt 12 oz (340 g)'), 12);
+check('a repeated unit is not summed', base('3 oz 2 oz'), 3);
+check('a pack term is not read as a compound part', base('Pizza 1 lb, 4 Pack'), 64);
+
 /* --------------------------------------------- layer 2: the real extension - */
 
 const fixtures = {
   '/dp/B000DAWN3': readFileSync(join(ROOT, 'fixtures/product.html'), 'utf8'),
-  '/s': readFileSync(join(ROOT, 'fixtures/search.html'), 'utf8')
+  '/s': readFileSync(join(ROOT, 'fixtures/search.html'), 'utf8'),
+  '/s/pizza': readFileSync(join(ROOT, 'fixtures/bug-pizza.html'), 'utf8')
 };
 
 const profile = mkdtempSync(join(tmpdir(), 'rup-profile-'));
@@ -152,6 +175,22 @@ try {
   await search.waitForTimeout(600);
   check('idempotent: badge count unchanged after re-run', (await badges(search)).length, 8);
   check('idempotent: one best-value tag after re-run', await search.$$eval('.rup-best', (e) => e.length), 1);
+
+  /* -- frozen pizza page: the compound-weight regression, end to end -- */
+  const pizza = await context.newPage();
+  await pizza.goto('https://www.amazon.com/s/pizza?k=frozen+pizza');
+  await pizza.waitForSelector('.rup-best', { timeout: 10000 });
+
+  console.log('\nfrozen pizza page (compound weights)');
+  check('Stone Oven 1 lb 11.5 oz at $7.99', await badgeForAsin(pizza, 'BPZ001'), '$0.29 / oz');
+  check('Pepperoni 24 oz at $8.49', await badgeForAsin(pizza, 'BPZ002'), '$0.35 / oz');
+  check('Thin Crust 1 lb 4.6 oz at $6.99', await badgeForAsin(pizza, 'BPZ003'), '$0.34 / oz');
+  check('best value goes to Stone Oven, not the pepperoni',
+    await pizza.$eval('.rup-best', (t) =>
+      t.closest('[data-component-type="s-search-result"]').dataset.asin), 'BPZ001');
+  check('only one best-value tag on the pizza page',
+    await pizza.$$eval('.rup-best', (e) => e.length), 1);
+  await pizza.close();
 
   console.log('\nprivacy');
   check('no requests outside the page itself', offSite, []);
