@@ -1,0 +1,8 @@
+NET WT 20 OZ (1 LB 4 OZ) 567g        $5 => $0.25 / oz  size 20
+Net Wt 1 lb 4 oz                     $5 => $0.31 / oz  size 16
+1 Pound 4 Ounce                      $5 => $0.31 / oz  size 16
+1 lb 8 oz bag                        $6 => $0.38 / oz  size 16
+2 lb 3 oz                            $7 => $0.22 / oz  size 32
+Ground Beef, 1.25 lb                 $6.24 => $0.31 / oz  size 20
+Chicken Breast, 2 lb 6 oz package    $9.49 => $0.30 / oz  size 32
+Frozen Pizza, 1 lb 11.5 oz           $7.99 => $0.50 / oz  size 16
