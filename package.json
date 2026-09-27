@@ -1,0 +1,12 @@
+{
+  "name": "real-unit-price",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Chrome extension (MV3) showing real unit prices on Amazon",
+  "scripts": {
+    "test": "node test.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.63.0"
+  }
+}

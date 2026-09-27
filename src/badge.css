@@ -1,0 +1,32 @@
+.rup-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border: 1px solid #1f7a4d;
+  border-radius: 10px;
+  background: #e8f6ee;
+  color: #10603a;
+  font-family: "Amazon Ember", Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 16px;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.rup-best {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: #b12704;
+  color: #fff;
+  font-family: "Amazon Ember", Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  vertical-align: middle;
+  text-transform: uppercase;
+}

@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Real Unit Price",
+  "version": "1.0.0",
+  "description": "Shows the real unit price ($/oz, $/fl oz, $/100 g, $/ct) next to prices on Amazon product and search pages.",
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.amazon.com/*",
+        "*://*.amazon.co.uk/*",
+        "*://*.amazon.ca/*"
+      ],
+      "js": ["src/parse.js", "src/content.js"],
+      "css": ["src/badge.css"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ]
+}
