@@ -1,4 +1,4 @@
-require('/Users/demo/Documents/Personal-Projects/lunch-unitprice/src/parse.js');
+require('./src/parse.js');
 const U=globalThis.UnitPrice;
 for (const [t,p] of [
  ['NET WT 20 OZ (1 LB 4 OZ) 567g',5],
